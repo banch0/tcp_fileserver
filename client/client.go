@@ -31,12 +31,9 @@ func init() {
 
 // MyFile ...
 type MyFile struct {
-	FileName   string
-	Source     io.Writer
-	Files      io.Reader
-	ReadWriter io.ReadWriter
-	Length     int64
-	Datas      []byte
+	FileName string
+	Source   io.Writer
+	Files    io.Reader
 }
 
 func main() {
@@ -139,6 +136,7 @@ func downloadingFiles(client net.Conn, download string) {
 	}
 
 	fmt.Println("Recieve bytes: ", n)
+	// defer client.Close()
 }
 
 func uploadingFiles(client net.Conn, upload string) {
