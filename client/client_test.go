@@ -2,7 +2,6 @@ package main
 
 import (
 	"io"
-	"log"
 	"net"
 	"sync"
 	"testing"
@@ -15,29 +14,28 @@ func TestClient(t *testing.T) {
 		wg.Add(1)
 		listen, err := net.Listen("tcp", address+":"+port)
 		if err != nil {
-			log.Println("creatServer error: ", err)
+			t.Log("creatServer error: ", err)
 		}
 		defer listen.Close()
 		defer wg.Done()
 		for {
-			_, err := listen.Accept()
-			log.Println("server listen")
+			conn, err := listen.Accept()
 			if err != nil {
-				log.Println("Can't accept client error: ", err)
+				t.Log("Can't accept client error: ", err)
 			}
-			time.Sleep(time.Second * 5)
+			conn.Write([]byte("echo"))
 		}
 	}()
 
 	go func() {
 		client, err := net.Dial("tcp", address+":"+port)
 		if err != nil {
-			log.Println("can't connect to the server: ", err)
+			t.Log("can't connect to the server: ", err)
 		}
 		defer func() {
 			err := client.Close()
 			if err != nil {
-				log.Println("Close error", err)
+				t.Log("Close error", err)
 			}
 		}()
 		wg.Add(1)
@@ -60,17 +58,16 @@ func TestDownload(t *testing.T) {
 		wg.Add(1)
 		listen, err := net.Listen("tcp", address+":"+port)
 		if err != nil {
-			log.Println("creatServer error: ", err)
+			t.Log("creatServer error: ", err)
 		}
 		defer listen.Close()
 		defer wg.Done()
 		for {
 			_, err := listen.Accept()
-			log.Println("server listen")
+			t.Log("server listen")
 			if err != nil {
-				log.Println("Can't accept client error: ", err)
+				t.Log("Can't accept client error: ", err)
 			}
-			time.Sleep(time.Second * 5)
 		}
 	}()
 	go func() {
@@ -91,17 +88,16 @@ func TestUpload(t *testing.T) {
 		wg.Add(1)
 		listen, err := net.Listen("tcp", address+":"+port)
 		if err != nil {
-			log.Println("creatServer error: ", err)
+			t.Log("creatServer error: ", err)
 		}
 		defer listen.Close()
 		defer wg.Done()
 		for {
 			_, err := listen.Accept()
-			log.Println("server listen")
+			t.Log("server listen")
 			if err != nil {
-				log.Println("Can't accept client error: ", err)
+				t.Log("Can't accept client error: ", err)
 			}
-			time.Sleep(time.Second * 5)
 		}
 	}()
 	go func() {

@@ -16,8 +16,6 @@ type MyFile struct {
 	Source     io.Writer
 	Files      io.Reader
 	ReadWriter io.ReadWriter
-	Length     int64
-	Datas      []byte
 }
 
 // IP addres of server
@@ -79,7 +77,7 @@ func handleRequest(conn net.Conn) {
 			return
 		case "showdir":
 			log.Println("showing dir ...")
-			showDirectory(conn)
+			showDirectoryServer(conn)
 			return
 		}
 	}
@@ -92,13 +90,17 @@ func downloadFile(conn net.Conn, line string) {
 		log.Println("downloadFile os.Open Error: ", err)
 	}
 	defer file.Close()
-	m := &MyFile{Files: file, FileName: line}
+
+	m := &MyFile{
+		Files:    file,
+		FileName: line,
+	}
+
 	n, err := io.Copy(conn, m.Files)
 	if err != nil {
 		log.Println("downlaodFile io.Copy Error:", err)
 	}
 	log.Println("Send bytes: ", n)
-	return
 }
 
 func uploadFile(conn net.Conn, line string) {
@@ -113,10 +115,9 @@ func uploadFile(conn net.Conn, line string) {
 		log.Println("uploadFile io.Copy Error:", err)
 	}
 	log.Println("Download bytes:", n)
-	return
 }
 
-func showDirectory(conn net.Conn) {
+func showDirectoryServer(conn net.Conn) {
 	var mystr string
 	files, err := ioutil.ReadDir("../files/")
 
@@ -129,5 +130,4 @@ func showDirectory(conn net.Conn) {
 	}
 
 	conn.Write([]byte(mystr))
-	return
 }

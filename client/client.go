@@ -51,8 +51,6 @@ func main() {
 		go showDirectoryClient(wg)
 	}
 
-	wg.Wait()
-
 	if upload != "" {
 		go uploadingFiles(client, upload)
 		time.Sleep(time.Millisecond * 100)
@@ -64,6 +62,7 @@ func main() {
 		time.Sleep(time.Millisecond * 100)
 		return
 	}
+	wg.Wait()
 }
 
 func showDirectoryClient(wg *sync.WaitGroup) error {
