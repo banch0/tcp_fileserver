@@ -17,7 +17,7 @@ var upload string
 var download string
 var showList bool
 
-var address = "127.0.0.1"
+var address = "localhost"
 var port = "9999"
 
 func init() {
