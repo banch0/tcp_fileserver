@@ -10,28 +10,6 @@ import (
 	"strings"
 )
 
-/*
-// TODO:
-1. Client.exe upload <paht_to_file> +
-2. Server.exe download <path_to_file> +
-3. Client.exe list ("show list of files") +
-
-// needed packages is: filepath -, flag+
-// Warning: all requests must run in goroutines
-// test run from goroutines too
-// add to github and add Actions
-*/
-
-// MyConnection ...
-type MyConnection struct {
-	Num        int64
-	connection *net.Conn
-	FileWriter io.Writer
-	FileReader io.Reader
-	Datas      []byte
-	File       *os.File
-}
-
 // MyFile ...
 type MyFile struct {
 	FileName   string
@@ -46,10 +24,10 @@ type MyFile struct {
 var IP = "0.0.0.0"
 
 // PORT number of server
-var PORT = ":9999"
+var PORT = "9999"
 
 func main() {
-	listen, err := net.Listen("tcp", IP+PORT)
+	listen, err := net.Listen("tcp", IP+":"+PORT)
 	if err != nil {
 		log.Fatal("Server can't started", err)
 	}
@@ -75,6 +53,9 @@ func handleRequest(conn net.Conn) {
 		reader := bufio.NewReader(conn)
 		command, err := reader.ReadString(' ')
 		if err != nil {
+			if err == io.EOF {
+				return
+			}
 			log.Println("Error read space:", err)
 		}
 
@@ -106,7 +87,7 @@ func handleRequest(conn net.Conn) {
 }
 
 func downloadFile(conn net.Conn, line string) {
-	file, err := os.Open(strings.TrimSpace(line))
+	file, err := os.Open("../files/" + strings.TrimSpace(line))
 	if err != nil {
 		log.Println("downloadFile os.Open Error: ", err)
 	}
@@ -121,12 +102,12 @@ func downloadFile(conn net.Conn, line string) {
 }
 
 func uploadFile(conn net.Conn, line string) {
-	file, err := os.Create("./" + strings.TrimSpace(line))
+	file, err := os.Create("../files/" + strings.TrimSpace(line))
 	if err != nil {
 		log.Println("uploadFile os.Create Error: ", err)
 	}
 	defer file.Close()
-	m := &MyFile{ReadWriter: file, FileName: line, }
+	m := &MyFile{ReadWriter: file, FileName: line}
 	n, err := io.Copy(m.ReadWriter, conn)
 	if err != nil {
 		log.Println("uploadFile io.Copy Error:", err)
@@ -137,7 +118,7 @@ func uploadFile(conn net.Conn, line string) {
 
 func showDirectory(conn net.Conn) {
 	var mystr string
-	files, err := ioutil.ReadDir("./")
+	files, err := ioutil.ReadDir("../files/")
 
 	if err != nil {
 		log.Fatal("Can't open directory ", err)

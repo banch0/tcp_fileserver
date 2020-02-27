@@ -4,27 +4,21 @@ import (
 	"bufio"
 	"flag"
 	"fmt"
-	"strings"
-	"sync"
-	"time"
-
-	// "time"
-
 	"io"
 	"log"
 	"net"
 	"os"
+	"strings"
+	"sync"
+	"time"
 )
 
 var upload string
 var download string
 var showList bool
 
-// IP addres of server
-var IP = "127.0.0.1"
-
-// PORT number of server
-var PORT = ":9999"
+var address = "127.0.0.1"
+var port = "9999"
 
 func init() {
 	flag.StringVar(&upload, "upload", "", "Add path to file")
@@ -37,86 +31,92 @@ func init() {
 
 // MyFile ...
 type MyFile struct {
-	FileName string
-	Source   io.Writer
-	Files    io.Reader
-	Length   int64
+	FileName   string
+	Source     io.Writer
+	Files      io.Reader
+	ReadWriter io.ReadWriter
+	Length     int64
+	Datas      []byte
 }
 
 func main() {
 	flag.Parse()
 	wg := &sync.WaitGroup{}
-	client, err := net.Dial("tcp", IP+PORT)
+
+	client, err := net.Dial("tcp", address+":"+port)
 	if err != nil {
 		log.Fatal("Can't connect to the server", err)
 	}
+	defer client.Close()
 
-	// defer client.Close()
 	if showList != false {
 		wg.Add(1)
-		// time.Sleep(5 * time.Second)
-		// go showDirectory(client, wg)
-		go clientDownload(wg)
-		log.Println("in the show")
-		// return
+		go showDirectoryClient(wg)
 	}
 
 	wg.Wait()
 
 	if upload != "" {
 		go uploadingFiles(client, upload)
-		time.Sleep(time.Second * 2)
+		time.Sleep(time.Millisecond * 100)
 		return
 	}
 
 	if download != "" {
 		go downloadingFiles(client, download)
-		time.Sleep(time.Second * 2)
+		time.Sleep(time.Millisecond * 100)
 		return
 	}
 }
 
-func clientDownload(wg *sync.WaitGroup) {
-	client, err := net.Dial("tcp", IP+PORT)
+func showDirectoryClient(wg *sync.WaitGroup) error {
+	client, err := net.Dial("tcp", address+":"+port)
 	if err != nil {
 		log.Fatal("Can't connect to the server", err)
-		return
+		return err
 	}
-
-	showDirectory(client, wg)
-
 	defer client.Close()
-	// return err
-}
 
-func showDirectory(client net.Conn, wg *sync.WaitGroup) {
-	defer wg.Done()
-	client.Write([]byte("showdir \n"))
-	d := make([]byte, 512)
-	_, err := client.Read(d)
+	err = showDirectory(client, wg)
 	if err != nil {
 		if err == io.EOF {
-			log.Println("endOFfile")
-			return
+			return nil
+		}
+		log.Println("showDirectoryClient showDirectory Error: ", err)
+	}
+	return err
+}
+
+func showDirectory(client net.Conn, wg *sync.WaitGroup) error {
+	defer wg.Done()
+	client.Write([]byte("showdir \n"))
+	datas := make([]byte, 512)
+	_, err := client.Read(datas)
+	if err != nil {
+		if err == io.EOF {
+			log.Println("showDirectory end Of file")
+			return err
 		}
 		log.Println("Error client read", err)
 	}
-	fl := strings.Split(string(d[1:]), " ")
+	filesName := strings.Split(string(datas[1:]), " ")
 	fmt.Println(" Files on the server:")
 
-	for _, file := range fl {
+	for _, file := range filesName {
 		fmt.Printf(" - %s\n", file)
 	}
-	return
+	return err
 }
 
 func downloadingFiles(client net.Conn, download string) {
-	log.Println("start downloading")
+	fmt.Println("--- Start downloading")
 
 	out, err := os.Create("./" + download)
+
 	if err != nil {
 		log.Println("download Create Error: ", err)
 	}
+
 	defer out.Close()
 
 	writer := bufio.NewWriter(client)
@@ -124,20 +124,25 @@ func downloadingFiles(client net.Conn, download string) {
 	writer.WriteString("download " + download + "\n")
 	writer.Flush()
 
-	m := &MyFile{Source: out, FileName: download}
+	m := &MyFile{
+		Source:   out,
+		FileName: download,
+	}
 
 	n, err := io.Copy(m.Source, client)
+
 	if err != nil {
 		if err == io.EOF {
 			return
 		}
 		log.Println("download Error: ", err)
 	}
+
 	fmt.Println("Recieve bytes: ", n)
 }
 
 func uploadingFiles(client net.Conn, upload string) {
-	log.Println("start uploading")
+	fmt.Println("--- Start uploading")
 
 	file, err := os.Open(strings.TrimSpace(upload))
 	if err != nil {
