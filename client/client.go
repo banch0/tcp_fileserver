@@ -135,7 +135,6 @@ func downloadingFiles(client net.Conn, download string) {
 	}
 
 	fmt.Println("Recieve bytes: ", n)
-	// defer client.Close()
 }
 
 func uploadingFiles(client net.Conn, upload string) {

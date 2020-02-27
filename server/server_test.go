@@ -31,7 +31,7 @@ func TestShowdir(t *testing.T) {
 			go handleRequest(conn)
 		}
 	}()
-	// wg := &sync.WaitGroup{}
+
 	go func() {
 		client, err := net.Dial("tcp", IP+":"+PORT)
 		if err != nil {
@@ -43,9 +43,7 @@ func TestShowdir(t *testing.T) {
 				t.Error("Close error", err)
 			}
 		}()
-		// wg.Add(1)
 
-		// defer wg.Done()
 		client.Write([]byte("showdir \n"))
 		datas := make([]byte, 512)
 		_, err = client.Read(datas)
@@ -56,7 +54,6 @@ func TestShowdir(t *testing.T) {
 			fmt.Printf(" - %s\n", file)
 		}
 	}()
-	// wg.Wait()
 }
 
 func TestDownloadFile(t *testing.T) {
