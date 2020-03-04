@@ -13,12 +13,16 @@ import (
 	"time"
 )
 
-var upload string
-var download string
-var showList bool
+var (
+	showList bool
+	download string
+	upload   string
+	address  = "localhost"
+	port     = "9999"
+)
 
-var address = "localhost"
-var port = "9999"
+// SHOWDIR ...
+const SHOWDIR = "showdir"
 
 func init() {
 	flag.StringVar(&upload, "upload", "", "Add path to file")
@@ -29,11 +33,10 @@ func init() {
 	flag.BoolVar(&showList, "l", false, "show all file in directory")
 }
 
-// MyFile ...
-type MyFile struct {
+// FileObject ...
+type FileObject struct {
 	FileName string
-	Source   io.Writer
-	Files    io.Reader
+	Source   io.ReadWriter
 }
 
 func main() {
@@ -62,6 +65,7 @@ func main() {
 		time.Sleep(time.Millisecond * 100)
 		return
 	}
+
 	wg.Wait()
 }
 
@@ -85,8 +89,10 @@ func showDirectoryClient(wg *sync.WaitGroup) error {
 
 func showDirectory(client net.Conn, wg *sync.WaitGroup) error {
 	defer wg.Done()
-	client.Write([]byte("showdir \n"))
+
+	client.Write([]byte(SHOWDIR + "\n"))
 	datas := make([]byte, 512)
+
 	_, err := client.Read(datas)
 	if err != nil {
 		if err == io.EOF {
@@ -95,12 +101,14 @@ func showDirectory(client net.Conn, wg *sync.WaitGroup) error {
 		}
 		log.Println("Error client read", err)
 	}
+
 	filesName := strings.Split(string(datas[1:]), " ")
 	fmt.Println(" Files on the server:")
 
 	for _, file := range filesName {
 		fmt.Printf(" - %s\n", file)
 	}
+	
 	return err
 }
 
@@ -120,7 +128,7 @@ func downloadingFiles(client net.Conn, download string) {
 	writer.WriteString("download " + download + "\n")
 	writer.Flush()
 
-	m := &MyFile{
+	m := &FileObject{
 		Source:   out,
 		FileName: download,
 	}

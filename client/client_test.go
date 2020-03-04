@@ -1,14 +1,19 @@
 package main
 
 import (
+	"bufio"
 	"io"
+	"io/ioutil"
+	"log"
 	"net"
+	"strings"
 	"sync"
 	"testing"
 	"time"
 )
 
-func TestClient(t *testing.T) {
+func TestShowdir(t *testing.T) {
+	var mystr string
 	wg := &sync.WaitGroup{}
 	go func() {
 		wg.Add(1)
@@ -23,7 +28,17 @@ func TestClient(t *testing.T) {
 			if err != nil {
 				t.Log("Can't accept client error: ", err)
 			}
-			conn.Write([]byte("echo"))
+			files, err := ioutil.ReadDir("../files/")
+
+			if err != nil {
+				log.Fatal("Can't open directory ", err)
+			}
+
+			for _, f := range files {
+				mystr += " " + f.Name()
+			}
+
+			conn.Write([]byte(mystr))
 		}
 	}()
 
@@ -39,12 +54,18 @@ func TestClient(t *testing.T) {
 			}
 		}()
 		wg.Add(1)
-		err = showDirectory(client, wg)
+		client.Write([]byte("showdir \n"))
+		datas := make([]byte, 512)
+		_, err = client.Read(datas)
 		if err != nil {
 			if err == io.EOF {
 				return
 			}
-			t.Log("clientDownload showDirectory Error: ", err)
+			t.Log("Error client read: ", err)
+		}
+		filesName := strings.Split(string(datas[1:]), " ")
+		if len(filesName) != 2 {
+			t.Error("Client showdir test error")
 		}
 		defer wg.Done()
 	}()
@@ -93,11 +114,20 @@ func TestUpload(t *testing.T) {
 		defer listen.Close()
 		defer wg.Done()
 		for {
-			_, err := listen.Accept()
-			t.Log("server listen")
+			conn, err := listen.Accept()
 			if err != nil {
 				t.Log("Can't accept client error: ", err)
 			}
+			reader := bufio.NewReader(conn)
+			line, err := reader.ReadString('\n')
+			if err != nil {
+				if err == io.EOF {
+					return
+				}
+				t.Logf("Error when reading client data %v", err)
+				return
+			}
+			t.Log(line)
 		}
 	}()
 	go func() {

@@ -10,19 +10,24 @@ import (
 	"strings"
 )
 
-// MyFile ...
-type MyFile struct {
+// FileObject ...
+type FileObject struct {
 	FileName   string
-	Source     io.Writer
-	Files      io.Reader
 	ReadWriter io.ReadWriter
 }
 
-// IP addres of server
-var IP = "0.0.0.0"
-
-// PORT number of server
-var PORT = "9999"
+const (
+	// IP local addres
+	IP = "0.0.0.0"
+	// PORT number of server
+	PORT = "9999"
+	// UPLOAD ...
+	UPLOAD = "upload"
+	// DOWNLOAD ...
+	DOWNLOAD = "download"
+	// SHOWDIR ...
+	SHOWDIR = "showdir"
+)
 
 func main() {
 	listen, err := net.Listen("tcp", IP+":"+PORT)
@@ -30,7 +35,7 @@ func main() {
 		log.Fatal("Server can't started", err)
 	}
 
-	log.Printf("Server starting on %s\n", IP+PORT)
+	log.Printf("Server starting on %s\n", IP+":"+PORT)
 	defer listen.Close()
 
 	for {
@@ -67,17 +72,17 @@ func handleRequest(conn net.Conn) {
 		}
 
 		switch strings.TrimSpace(command) {
-		case "upload":
+		case UPLOAD:
 			log.Println("uploading ...")
 			uploadFile(conn, line)
 			return
-		case "download":
+		case DOWNLOAD:
 			log.Println("downloading ...")
 			downloadFile(conn, line)
 			return
-		case "showdir":
+		case SHOWDIR:
 			log.Println("showing dir ...")
-			showDirectoryServer(conn)
+			showDirectoryOnServer(conn)
 			return
 		}
 	}
@@ -91,15 +96,16 @@ func downloadFile(conn net.Conn, line string) {
 	}
 	defer file.Close()
 
-	m := &MyFile{
-		Files:    file,
-		FileName: line,
+	m := &FileObject{
+		ReadWriter: file,
+		FileName:   line,
 	}
 
-	n, err := io.Copy(conn, m.Files)
+	n, err := io.Copy(conn, m.ReadWriter)
 	if err != nil {
 		log.Println("downlaodFile io.Copy Error:", err)
 	}
+	
 	log.Println("Send bytes: ", n)
 }
 
@@ -109,7 +115,12 @@ func uploadFile(conn net.Conn, line string) {
 		log.Println("uploadFile os.Create Error: ", err)
 	}
 	defer file.Close()
-	m := &MyFile{ReadWriter: file, FileName: line}
+
+	m := &FileObject{
+		ReadWriter: file,
+		FileName:   line,
+	}
+
 	n, err := io.Copy(m.ReadWriter, conn)
 	if err != nil {
 		log.Println("uploadFile io.Copy Error:", err)
@@ -117,7 +128,7 @@ func uploadFile(conn net.Conn, line string) {
 	log.Println("Download bytes:", n)
 }
 
-func showDirectoryServer(conn net.Conn) {
+func showDirectoryOnServer(conn net.Conn) {
 	var mystr string
 	files, err := ioutil.ReadDir("../files/")
 
