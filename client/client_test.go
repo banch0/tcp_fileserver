@@ -9,27 +9,38 @@ import (
 	"strings"
 	"sync"
 	"testing"
-	"time"
 )
 
+const (
+	ADDR = "127.0.0.1"
+)
+
+var serverFileSize int64
+
 func TestShowdir(t *testing.T) {
-	var mystr string
 	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
 	go func() {
-		wg.Add(1)
-		listen, err := net.Listen("tcp", address+":"+port)
+		var mystr string
+		listen, err := net.Listen("tcp", ADDR+":"+port)
 		if err != nil {
-			t.Log("creatServer error: ", err)
+			log.Println("creatServer error: ", err)
 		}
-		defer listen.Close()
-		defer wg.Done()
+		defer func() {
+			err := listen.Close()
+			if err != nil {
+				t.Error("Close error", err)
+			}
+		}()
+
 		for {
 			conn, err := listen.Accept()
 			if err != nil {
-				t.Log("Can't accept client error: ", err)
+				log.Println("Can't accept client error: ", err)
 			}
-			files, err := ioutil.ReadDir("../files/")
 
+			files, err := ioutil.ReadDir("../files/")
 			if err != nil {
 				log.Fatal("Can't open directory ", err)
 			}
@@ -47,87 +58,164 @@ func TestShowdir(t *testing.T) {
 		if err != nil {
 			t.Log("can't connect to the server: ", err)
 		}
+
 		defer func() {
 			err := client.Close()
 			if err != nil {
-				t.Log("Close error", err)
+				t.Error("Close error", err)
 			}
 		}()
-		wg.Add(1)
-		client.Write([]byte("showdir \n"))
+
 		datas := make([]byte, 512)
 		_, err = client.Read(datas)
 		if err != nil {
 			if err == io.EOF {
 				return
 			}
-			t.Log("Error client read: ", err)
+			t.Error("Error client read: ", err)
 		}
+
 		filesName := strings.Split(string(datas[1:]), " ")
 		if len(filesName) != 2 {
 			t.Error("Client showdir test error")
 		}
 		defer wg.Done()
 	}()
-	wg.Wait()
 
+	wg.Wait()
+	t.Error("end of showdir test")
 }
 
 func TestDownload(t *testing.T) {
 	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
 	go func() {
-		wg.Add(1)
-		listen, err := net.Listen("tcp", address+":"+port)
+		listen, err := net.Listen("tcp", ADDR+":"+port)
 		if err != nil {
-			t.Log("creatServer error: ", err)
+			log.Println("creatServer error: ", err)
 		}
-		defer listen.Close()
-		defer wg.Done()
-		for {
-			_, err := listen.Accept()
-			t.Log("server listen")
+
+		defer func() {
+			err := listen.Close()
 			if err != nil {
-				t.Log("Can't accept client error: ", err)
+				t.Error("Close error", err)
 			}
+		}()
+
+		for {
+			conn, err := listen.Accept()
+			if err != nil {
+				log.Println("Can't accept client error: ", err)
+			}
+
+			reader := bufio.NewReader(conn)
+			_, err = reader.ReadString('\n')
+			if err != nil {
+				if err == io.EOF {
+					return
+				}
+				log.Println("Error read space:", err)
+			}
+
+			// file, err := os.Open("../files/image.jpg")
+			// if err != nil {
+			// 	log.Println("downloadFile os.Open Error: ", err)
+			// }
+			// defer file.Close()
+
+			// serverFileSize, err = io.Copy(conn, file)
+			// if err != nil {
+			// 	t.Error("Can't copy file")
+			// }
+			// conn.Write([]byte(strconv.Itoa(int(serverFileSize))))
+			t.Log(serverFileSize)
 		}
 	}()
+
 	go func() {
 		client, err := net.Dial("tcp", address+":"+port)
 		if err != nil {
 			t.Log("can't connect to the server: ", err)
 		}
-		defer client.Close()
+		defer func() {
+			err := client.Close()
+			if err != nil {
+				t.Error("Close error", err)
+			}
+		}()
 
-		go downloadingFiles(client, "image.jpg")
-		time.Sleep(100 * time.Millisecond)
+		// var clientFileSize int64
+
+		// file, err := os.Create("./file")
+
+		// m := FileObject{
+		// 	Source: file,
+		// }
+
+		// clientFileSize, err = io.Copy(m.Source, client)
+		// if err != nil {
+		// 	t.Error("Client can't copy file")
+		// }
+
+		// if clientFileSize == serverFileSize {
+		// 	t.Error("Wrong size of downloading file")
+		// }
+
+		client.Write([]byte("\n"))
+		defer wg.Done()
 	}()
+	wg.Wait()
+	t.Error("end of download test")
 }
 
 func TestUpload(t *testing.T) {
 	wg := &sync.WaitGroup{}
+	wg.Add(1)
+
 	go func() {
-		wg.Add(1)
-		listen, err := net.Listen("tcp", address+":"+port)
+		listen, err := net.Listen("tcp", ADDR+":"+port)
 		if err != nil {
 			t.Log("creatServer error: ", err)
 		}
-		defer listen.Close()
-		defer wg.Done()
+
+		defer func() {
+			err := listen.Close()
+			if err != nil {
+				t.Error("Close error", err)
+			}
+		}()
+
 		for {
 			conn, err := listen.Accept()
 			if err != nil {
 				t.Log("Can't accept client error: ", err)
 			}
+
 			reader := bufio.NewReader(conn)
-			line, err := reader.ReadString('\n')
+			_, err = reader.ReadString('\n')
 			if err != nil {
 				if err == io.EOF {
 					return
 				}
-				t.Logf("Error when reading client data %v", err)
-				return
+				log.Println("Error read space:", err)
 			}
-			t.Log(line)
+
+			// go func() {
+			// 	file, err := os.Create("./testFile")
+			// 	if err != nil {
+			// 		log.Println("uploadFile os.Create Error: ", err)
+			// 	}
+			// 	defer file.Close()
+			// 	m := FileObject{
+			// 		Source: file,
+			// 	}
+			// 	n, err := io.Copy(m.Source, conn)
+			// 	if err != nil {
+			// 		t.Error("Can't create error")
+			// 	}
+			// 	t.Error(n)
+			// }()
 		}
 	}()
 	go func() {
@@ -135,9 +223,16 @@ func TestUpload(t *testing.T) {
 		if err != nil {
 			t.Log("can't connect to the server: ", err)
 		}
-		defer client.Close()
+		defer func() {
+			err := client.Close()
+			if err != nil {
+				t.Error("Close error", err)
+			}
+		}()
 
-		go uploadingFiles(client, "image.jpg")
-		time.Sleep(100 * time.Millisecond)
+		client.Write([]byte("\n"))
+		defer wg.Done()
 	}()
+	wg.Wait()
+	t.Error("end of upload test")
 }

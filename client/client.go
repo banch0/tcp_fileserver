@@ -10,7 +10,6 @@ import (
 	"os"
 	"strings"
 	"sync"
-	"time"
 )
 
 var (
@@ -22,7 +21,7 @@ var (
 )
 
 // SHOWDIR ...
-const SHOWDIR = "showdir"
+const SHOWDIR = "showdir "
 
 func init() {
 	flag.StringVar(&upload, "upload", "", "Add path to file")
@@ -55,14 +54,14 @@ func main() {
 	}
 
 	if upload != "" {
-		go uploadingFiles(client, upload)
-		time.Sleep(time.Millisecond * 100)
+		wg.Add(1)
+		go uploadingFiles(client, upload, wg)
 		return
 	}
 
 	if download != "" {
-		go downloadingFiles(client, download)
-		time.Sleep(time.Millisecond * 100)
+		wg.Add(1)
+		go downloadingFiles(client, download, wg)
 		return
 	}
 
@@ -108,11 +107,12 @@ func showDirectory(client net.Conn, wg *sync.WaitGroup) error {
 	for _, file := range filesName {
 		fmt.Printf(" - %s\n", file)
 	}
-	
+
 	return err
 }
 
-func downloadingFiles(client net.Conn, download string) {
+func downloadingFiles(client net.Conn, download string, wg *sync.WaitGroup) {
+	defer wg.Done()
 	fmt.Println("--- Start downloading")
 
 	out, err := os.Create("./" + download)
@@ -134,7 +134,6 @@ func downloadingFiles(client net.Conn, download string) {
 	}
 
 	n, err := io.Copy(m.Source, client)
-
 	if err != nil {
 		if err == io.EOF {
 			return
@@ -145,7 +144,8 @@ func downloadingFiles(client net.Conn, download string) {
 	fmt.Println("Recieve bytes: ", n)
 }
 
-func uploadingFiles(client net.Conn, upload string) {
+func uploadingFiles(client net.Conn, upload string, wg *sync.WaitGroup) {
+	defer wg.Done()
 	fmt.Println("--- Start uploading")
 
 	file, err := os.Open(strings.TrimSpace(upload))
@@ -155,11 +155,11 @@ func uploadingFiles(client net.Conn, upload string) {
 	defer file.Close()
 
 	client.Write([]byte("upload " + upload + "\n"))
-	time.Sleep(5 * time.Millisecond)
 
 	n, err := io.Copy(client, file)
 	if err != nil {
 		log.Fatal(err)
 	}
+
 	fmt.Println("Send bytes:", n)
 }
