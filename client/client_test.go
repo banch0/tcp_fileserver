@@ -83,7 +83,7 @@ func TestShowdir(t *testing.T) {
 	}()
 
 	wg.Wait()
-	t.Error("end of showdir test")
+	// t.Error("end of showdir test")
 }
 
 func TestDownload(t *testing.T) {
@@ -166,7 +166,7 @@ func TestDownload(t *testing.T) {
 		defer wg.Done()
 	}()
 	wg.Wait()
-	t.Error("end of download test")
+	// t.Error("end of download test")
 }
 
 func TestUpload(t *testing.T) {
@@ -234,5 +234,5 @@ func TestUpload(t *testing.T) {
 		defer wg.Done()
 	}()
 	wg.Wait()
-	t.Error("end of upload test")
+	// t.Error("end of upload test")
 }
